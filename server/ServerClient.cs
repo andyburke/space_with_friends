@@ -132,7 +132,7 @@ namespace space_with_friends {
 			}
 
 			if (disposing) {
-				_tcpClient.Dispose();
+				// _tcpClient.Dispose();
 				_netStream.Dispose();
 			}
 

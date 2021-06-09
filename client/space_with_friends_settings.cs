@@ -26,8 +26,6 @@ namespace space_with_friends {
 
 		void Start() {
 			instance = this;
-
-			utils.Log( "setup started" );
 			GameEvents.onGameStateSave.Add(OnSave);
 		}
 
@@ -37,7 +35,6 @@ namespace space_with_friends {
 		}
 
 		public override void OnSave( ConfigNode node ) {
-			utils.Log( "saving" );
 			node.AddValue( "host", host );
 			node.AddValue( "port", port.ToString() );
 		}
@@ -53,7 +50,9 @@ namespace space_with_friends {
 				port = UInt16.Parse( node.GetValue( "port" ) );
 			}
 
-			utils.Log( "loaded" );
+			utils.Log( "loaded host/port info from save game" );
+			utils.Log( $"  host: { host }" );
+			utils.Log( $"  port: { port }" );
 		}
 	}
 }

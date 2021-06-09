@@ -9,7 +9,6 @@ namespace swf_common {
 	using System.Net.Sockets;
 	using System.Threading.Tasks;
 
-
 	using space_with_friends.msg;
 
 	public class ClientBase {
@@ -18,7 +17,7 @@ namespace swf_common {
 		CerasSerializer _sendCeras;
 		CerasSerializer _receiveCeras;
 
-		public event Action<object> on_message;
+		public event Action<string, object> on_message;
 
 		public void connect( string host, UInt16 port ) {
 			// Create network connection	
@@ -71,7 +70,8 @@ namespace swf_common {
 
 
 		public void startReceiving() {
-			log.info( $"Starting receiving" );
+// FIXME: immutable issues
+//			log.info( $"Starting receiving" );
 			Task.Run( async () => {
 				try {
 					while (true) {
@@ -81,13 +81,20 @@ namespace swf_common {
 					}
 				}
 				catch (Exception e) {
-					log.error( "Client error while receiving: " + e );
+// FIXME: immutable issues
+//					log.error( "Client error while receiving: " + e );
 				}
 			} );
 		}
 
 		public virtual void HandleMessage( object msg ) {
-			on_message.Invoke( msg );
+			if( msg is SendFromTarget from_target ) {
+				on_message.Invoke( from_target.Target, from_target.Message );
+			}
+			else {
+// FIXME: immutable issues
+//				log.error( "unhandled message type: " + msg.GetType() );
+			}
 		}
 
 		// A little helper function that sends any object to the server

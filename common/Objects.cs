@@ -17,8 +17,6 @@ namespace space_with_friends.msg {
 		public string event_json;
 	}
 
-
-
 	// M E S S A G E  S U P P O R T
 	// ???? Refactor these to an enum that the server doesnt care about
 	public class SendToAll {

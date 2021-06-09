@@ -106,6 +106,25 @@
 				"kind": "build",
 				"isDefault": true
 			}
+		},
+		{
+			"label": "all:build",
+			"type": "process",
+			"command": "sort",
+			"args": [
+				"${workspaceFolder}/build_complete.txt"
+			],
+			"dependsOn": [
+				"libs:ceras:build",
+				"common:build",
+				"client:build",
+				"server:build"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": []
 		}
 	]
 }

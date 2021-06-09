@@ -163,10 +163,12 @@ static public class log {
 	static public void expected<T>( T value, string falseString, string trueString = "", T notExpectedValue = default( T ) ) {
 
 		if (!value.Equals( notExpectedValue )) {
-			log.info( $"Properly got {value}{trueString}" );
+// FIXME: immutable issues
+//			log.info( $"Properly got {value}{trueString}" );
 		}
 		else {
-			log.warn( $"Got {notExpectedValue} instead of {value}{falseString}" );
+// FIXME: immutable issues
+//			log.warn( $"Got {notExpectedValue} instead of {value}{falseString}" );
 		}
 	}
 

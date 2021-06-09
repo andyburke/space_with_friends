@@ -12,6 +12,8 @@ namespace space_with_friends {
 		public static string player_id;
 
 		public void Start() {
+			DontDestroyOnLoad( this );
+
 			utils.Log( "starting" );
 
 			if (space_with_friends_settings.instance.host != "") {
@@ -33,11 +35,14 @@ namespace space_with_friends {
 
 				string player_id_file = Path.GetFullPath( Path.Combine( KSPUtil.ApplicationRootPath, "space_with_friends_player_id.txt" ) );
 				if (File.Exists( player_id_file )) {
-					List<string> lines = (List<string>)File.ReadLines( player_id_file );
-					if (lines.Count > 0) {
-						player_id = lines[ 0 ].TrimStart().TrimEnd();
+					foreach ( string line in File.ReadLines( player_id_file ) )
+					{
+						player_id = line.TrimStart().TrimEnd();
+						utils.Log( "player_id loaded from file" );
+						break;
 					}
 				}
+				utils.Log( "player_id: " + player_id );
 
 				client.broadcast( new msg.login { player_id = player_id } );
 			}
@@ -45,6 +50,7 @@ namespace space_with_friends {
 				utils.Log( "no host name" );
 			}
 		}
+
 		public void OnDestroy() {
 			utils.Log( "stopping" );
 

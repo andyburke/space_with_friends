@@ -2,6 +2,9 @@
   <PropertyGroup>
     <TargetFramework>net45</TargetFramework>
   </PropertyGroup>
+  <PropertyGroup>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup> 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath />
     <DefineConstants>TRACE;DEBUG</DefineConstants>
@@ -21,9 +24,6 @@
   <ItemGroup>
     <ProjectReference Include="..\libs\Ceras\Ceras.csproj" />
     <ProjectReference Include="..\common\swf_common.csproj" />
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>..\libs\Json.Net\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program - client1\KSP_x64_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
