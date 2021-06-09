@@ -2,11 +2,15 @@
 
 namespace space_with_friends {
 
+#if !MARC
+
 	[KSPAddon( KSPAddon.Startup.Flight, once: false )]
 	public class RPMBridge {
 		public void Start() {
 			JSI.Core.Events.onEvent += on_event;
 			Core.client.on_message += on_network_message;
+
+			Core.client.broadcast( new msg.login { player_id="test" } );
 		}
 
 		public void OnDestroy() {
@@ -18,7 +22,7 @@ namespace space_with_friends {
 			switch( _event.type ) {
 				case "click":
 				case "release":
-					Core.client.broadcast<msg.rpm_event>( new msg.rpm_event {
+					Core.client.broadcast( new msg.rpm_event {
 						player_id = space_with_friends.Core.player_id,
 						event_json = JsonConvert.SerializeObject( _event )
 					} );
@@ -49,5 +53,7 @@ namespace space_with_friends {
 			}
 		}
 	}
+
+#endif
 }
 

@@ -87,7 +87,7 @@ namespace Ceras.Helpers
 
 #if DEBUG
 			if (id < 0 || id >= _deserializationCache.Count)
-				throw new InvalidOperationException("Object cache does not contain an object with the ID: " + id);
+				throw new InvalidOperationException("Type cache does not contain an object with the ID: " + id);
 #endif
 
 			var reference = _deserializationCache[id];

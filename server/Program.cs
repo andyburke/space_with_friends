@@ -14,7 +14,7 @@ namespace server
 			//then Ceres can use the assembly to get at the juicy classes inside
 			login this_is_here_to_make_csharp_load_an_assembly;
 
-			space_with_friends.Server.Start();
+			space_with_friends.Server.start();
 		}
 	}
 }

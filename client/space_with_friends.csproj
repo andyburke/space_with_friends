@@ -3,15 +3,15 @@
     <TargetFramework>net45</TargetFramework>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <OutputPath/>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <OutputPath />
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ProcessorArchitecture>AMD64</ProcessorArchitecture>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath/>
+    <OutputPath />
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -19,7 +19,8 @@
     <ProcessorArchitecture>AMD64</ProcessorArchitecture>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\common\swf_common.csproj"/>
+    <ProjectReference Include="..\libs\Ceras\Ceras.csproj" />
+    <ProjectReference Include="..\common\swf_common.csproj" />
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\libs\Json.Net\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -37,7 +38,8 @@
     </Reference>
   </ItemGroup>
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy $(OutDir)$(TargetFileName)  &quot;C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program - client1\GameData\space_with_friends&quot; /F /Y"/>
-    <Exec Command="xcopy $(OutDir)$(TargetFileName)  &quot;C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program - client2\GameData\space_with_friends&quot; /F /Y"/>
+    <Exec Command="xcopy $(OutDir)$(TargetFileName)  &quot;C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program\GameData\space_with_friends&quot; /F /Y" />
+    <Exec Command="xcopy $(OutDir)$(TargetFileName)  &quot;C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program - client1\GameData\space_with_friends&quot; /F /Y" />
+    <Exec Command="xcopy $(OutDir)$(TargetFileName)  &quot;C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program - client2\GameData\space_with_friends&quot; /F /Y" />
   </Target>
 </Project>

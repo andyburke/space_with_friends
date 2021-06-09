@@ -17,16 +17,19 @@ namespace headless {
 
 		// D E B U G  T E S T I N G
 		public void sendExampleObjects() {
-			//*
+
+			broadcast( new login { player_id = "aaaa" } );
+
+			/*
 			// First thing is sending our login message, and then some random stuff
-			sendRaw( new ClientLogin { Name = "riki", Password = "123" } );
+			broadcast( new ClientLogin { Name = "riki", Password = "123" } );
 
 			// Since every type of object is supported we could also send strings directly 
-			sendRaw( "Hello I'm the client, sending a string directly! :)" );
+			broadcast( "Hello I'm the client, sending a string directly! :)" );
 			// And we can even send numbers and stuff...
-			sendRaw( 500.678 );
-			sendRaw( DateTime.Now );
-			sendRaw( (short)435 );
+			broadcast( 500.678 );
+			broadcast( DateTime.Now );
+			broadcast( (short)435 );
 
 			// Now lets try a more complicated object
 			var bob = new Person { Name = "Bob", Age = 20 };
@@ -34,14 +37,14 @@ namespace headless {
 			bob.Friends.Add( alice );
 			alice.Friends.Add( bob );
 
-			sendRaw( bob );
+			broadcast( bob );
 
 			// And finally some example for polymorphic types (inheritance)
 			List<ISpell> spells = new List<ISpell>();
 			spells.Add( new Lightning() );
 			spells.Add( new Fireball() );
 
-			sendRaw( spells );
+			broadcast( spells );
 			//*/
 		}
 

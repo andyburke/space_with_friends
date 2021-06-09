@@ -11,11 +11,12 @@ namespace client {
 
 			client.connect("localhost", 7887);
 
-			//c.Start();
+			client.startReceiving();
+
 
 			while (true) {
 				client.sendExampleObjects();
-				Thread.Sleep(250);
+				Thread.Sleep(5000);
 			}
 		}
 	}
