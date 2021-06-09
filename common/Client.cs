@@ -41,8 +41,8 @@ namespace swf_common {
 
 			_receiveCeras = new CerasSerializer( configRecv );
 
-			// Start a thread that receives and reacts to messages from the server
-			startReceiving();
+			//Explicitly call this later.  
+			//startReceiving();
 		}
 
 		public void disconnect() {
@@ -71,6 +71,7 @@ namespace swf_common {
 
 
 		public void startReceiving() {
+			log.info( $"Starting receiving" );
 			Task.Run( async () => {
 				try {
 					while (true) {

@@ -41,14 +41,14 @@ namespace space_with_friends {
 			// That means when the other side sends us a type (using the full name) we never want to transmit that again,
 			// the type should (from then on) be known as a some ID.
 			var configSend = new SerializerConfig();
-			configSend.Advanced.PersistTypeCache = false;
-			configSend.PreserveReferences = false;
+			configSend.Advanced.PersistTypeCache = true;
+			//configSend.PreserveReferences = false;
 
 			_sendCeras = new CerasSerializer( configSend );
 
 			var configRecv = new SerializerConfig();
-			configRecv.Advanced.PersistTypeCache = false;
-			configRecv.PreserveReferences = false;
+			configRecv.Advanced.PersistTypeCache = true;
+			//configRecv.PreserveReferences = false;
 
 			_receiveCeras = new CerasSerializer( configRecv );
 
@@ -56,6 +56,7 @@ namespace space_with_friends {
 		}
 
 		void startReceivingMessages() {
+			log.info( $"startReceivingMessages" );
 			Task.Run( async () => {
 				try {
 					_state = EState.eReceiving;
@@ -80,7 +81,7 @@ namespace space_with_friends {
 			if (msg is msg.SendToAll sendToAll) {
 				log.trace( $"Bouncing: {sendToAll.Message.GetType()}" );
 
-				Server.broadcast( this, sendToAll.Message );
+				Server.broadcast( this, new msg.SendFromTarget { Target= _clientName, Message=sendToAll.Message } );
 
 				return;
 			}

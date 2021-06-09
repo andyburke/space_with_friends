@@ -18,6 +18,7 @@ namespace headless {
 		// D E B U G  T E S T I N G
 		public void sendExampleObjects() {
 
+			log.info( $"Sending fake login" );
 			broadcast( new login { player_id = "aaaa" } );
 
 			/*

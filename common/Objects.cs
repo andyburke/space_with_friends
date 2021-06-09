@@ -3,14 +3,14 @@ using System;
 
 namespace space_with_friends.msg {
 
-    // M E S S A G E S
-    public class login {
-        public string player_id;
-    }
+	// M E S S A G E S
+	public class login {
+		public string player_id;
+	}
 
-    public class logout {
-        public string player_id;
-    }
+	public class logout {
+		public string player_id;
+	}
 
 	public class rpm_event {
 		public string player_id;
@@ -19,22 +19,25 @@ namespace space_with_friends.msg {
 
 
 
-    // M E S S A G E  S U P P O R T
-    // ???? Refactor these to an enum that the server doesnt care about
-    public class SendToAll {
-        public object Message;
-    }
+	// M E S S A G E  S U P P O R T
+	// ???? Refactor these to an enum that the server doesnt care about
+	public class SendToAll {
+		public object Message;
+	}
 
-    public class SendToServer {
-        public object Message;
-    }
+	public class SendToServer {
+		public object Message;
+	}
 
-    public class SendToTarget {
-        public string Target;
-        public object Message;
-    }
+	public class SendToTarget {
+		public string Target;
+		public object Message;
+	}
 
-
+	public class SendFromTarget {
+		public string Target;
+		public object Message;
+	}
 
 
 
