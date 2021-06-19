@@ -40,6 +40,10 @@ namespace space_with_friends {
 		}
 
 		public static void on_event( JSI.Core.Event _event ) {
+			if ( !HighLogic.LoadedSceneIsFlight ) {
+				return;
+			}
+
 			if ( replaying.ContainsKey( _event.id ) ) {
 				utils.Log( $"replaying remote event ({ _event.id })", "RPMBridge" );
 				return;
@@ -54,8 +58,9 @@ namespace space_with_friends {
 
 					Core.client.send( new space_with_friends.msg {
 						world_id = space_with_friends.Core.world_id,
-						source = space_with_friends.Core.player_id,
 						world_time = Planetarium.GetUniversalTime(),
+						vessel_id = FlightGlobals.ActiveVessel?.id ?? Guid.Empty,
+						source = space_with_friends.Core.player_id,
 						type = "rpm_event",
 						message = event_json
 					} );
@@ -64,7 +69,6 @@ namespace space_with_friends {
 		}
 
 		void on_network_message( space_with_friends.msg msg ) {
-			utils.Log( $"net from: { msg.source } type: { msg.type }", "RPMBridge" );
 			if ( msg.type != "rpm_event" ) {
 				return;
 			}

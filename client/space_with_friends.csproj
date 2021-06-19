@@ -37,6 +37,9 @@
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program - client1\KSP_x64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="InputSimulator" Version="1.0.4" />
+  </ItemGroup>
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="xcopy $(OutDir)$(TargetFileName)  &quot;C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program - client1\GameData\space_with_friends&quot; /F /Y" />
     <Exec Command="xcopy $(OutDir)$(TargetFileName)  &quot;C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program - client2\GameData\space_with_friends&quot; /F /Y" />

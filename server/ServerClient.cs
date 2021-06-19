@@ -84,6 +84,7 @@ namespace space_with_friends {
 					id = swf_msg.id,
 					world_id = swf_msg.world_id,
 					world_time = swf_msg.world_time,
+					type = swf_msg.type,
 					source = swf_msg.source,
 					target = swf_msg.target,
 					message = swf_msg.message
