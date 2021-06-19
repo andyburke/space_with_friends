@@ -75,44 +75,45 @@ namespace space_with_friends {
 			} );
 		}
 
-		void handleMessage( object msg ) {
-			log.debug( $"Got: {msg.GetType()}" );
+		void handleMessage( object message ) {
+			log.debug( $"Got: {message.GetType()}" );
 
-			if (msg is msg.SendToAll sendToAll) {
-				log.trace( $"Bouncing: {sendToAll.Message.GetType()}" );
+			if ( message is msg swf_msg ) {
 
-				Server.broadcast( this, new msg.SendFromTarget { Target= _clientName, Message=sendToAll.Message } );
+				Journal.insert( new JournalRecord {
+					id = swf_msg.id,
+					world_id = swf_msg.world_id,
+					world_time = swf_msg.world_time,
+					source = swf_msg.source,
+					target = swf_msg.target,
+					message = swf_msg.message
+				} );
 
+				if ( swf_msg.target != null ) {
+					log.trace( $"message to: { swf_msg.target }" );
+					// TODO: send only to target
+					return;
+				}
+
+				switch( swf_msg.type ) {
+					case "login":
+						log.info( $"login: { swf_msg.source }" );
+						_clientName = swf_msg.source;
+						break;
+					case "logout":
+						log.info( $"logout: { swf_msg.source }" );
+						_clientName = null;
+						break;
+				}
+
+				log.trace( $"broadcast: { swf_msg.id } / { swf_msg.type }" );
+				Server.broadcast( this, swf_msg );
 				return;
-			}
-
-			if (msg is msg.SendToTarget sendToTarget) {
-				log.trace( $"Bouncing: {sendToTarget.Message.GetType()}" );
-				return;
-			}
-
-			if (msg is msg.login login) {
-				log.info( $"login: {login.player_id}" );
-
-				_clientName = login.player_id;
-
-				return;
-			}
-
-			if (msg is msg.logout logout) {
-				log.info( $"logout: {logout.player_id}" );
-
-				// if (msg is msg.SendToAll sendToALl) {
-				// }
-
-				// if (msg is msg.SendToTarget sendToTarget) {
-				// }
 			}
 
 			// If we have no clue how to handle something, we
 			// just print it out to the console
-			log.warn( $"RECEIVED UNHANDLED: '{msg.GetType().Name}': {msg}" );
-
+			log.warn( $"RECEIVED UNHANDLED: '{message.GetType().Name}': {message}" );
 		}
 
 		public void send( object obj ) => _sendCeras.WriteToStream( _netStream, obj );

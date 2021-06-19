@@ -7,7 +7,7 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath></OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>DEBUG;TRACE;NO_UNITY</DefineConstants>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ProcessorArchitecture>AMD64</ProcessorArchitecture>
   </PropertyGroup>
@@ -16,7 +16,7 @@
     <DebugType>none</DebugType>
     <Optimize>true</Optimize>
     <OutputPath></OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>TRAC;NO_UNITY</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -24,6 +24,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite.Core.Backport" Version="2.0.0.26" />
     <PackageReference Include="System.Collections.Immutable" Version="5.0.0" />
   </ItemGroup>
 

@@ -1,6 +1,5 @@
 ﻿
 using space_with_friends;
-using space_with_friends.msg;
 
 namespace server
 {
@@ -12,7 +11,7 @@ namespace server
 
 			//Is this evil, yes!  What this does is forces C# to load the common assembly and 
 			//then Ceres can use the assembly to get at the juicy classes inside
-			login this_is_here_to_make_csharp_load_an_assembly;
+			msg this_is_here_to_make_csharp_load_an_assembly;
 
 			space_with_friends.Server.start();
 		}

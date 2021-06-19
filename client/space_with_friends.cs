@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 using UnityEngine;
@@ -10,17 +11,20 @@ namespace space_with_friends {
 
 		public static space_with_friends.Client client;
 		public static string player_id;
+		public static Guid world_id;
 
 		public void Start() {
 			DontDestroyOnLoad( this );
 
 			utils.Log( "starting" );
 
-			if (space_with_friends_settings.instance.host != "") {
+			if ( space_with_friends_settings.instance.host != "" ) {
 				if (client != null) {
 					utils.Log( "client is not null" );
 					return;
 				}
+
+				world_id = space_with_friends_settings.instance.world_id;
 
 				client = new space_with_friends.Client();
 
@@ -44,7 +48,12 @@ namespace space_with_friends {
 				}
 				utils.Log( "player_id: " + player_id );
 
-				client.broadcast( new msg.login { player_id = player_id } );
+				client.send( new msg {
+					world_id = world_id,
+					source = player_id,
+					world_time = Planetarium.GetUniversalTime(),
+					type = "login"
+				} );
 			}
 			else {
 				utils.Log( "no host name" );
@@ -56,7 +65,12 @@ namespace space_with_friends {
 
 			if (client != null) {
 				utils.Log( "disconnecting" );
-				client.broadcast( new msg.logout { player_id = player_id } );
+				client.send( new msg {
+					world_id = space_with_friends.Core.world_id,
+					source = space_with_friends.Core.player_id,
+					world_time = Planetarium.GetUniversalTime(),
+					type = "logout"
+				} );
 				client.disconnect();
 				client = null;
 				utils.Log( "disconnected" );

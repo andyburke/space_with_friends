@@ -52,60 +52,60 @@ namespace space_with_friends {
 					_serializer.TrySerialize( typeof( JSI.Core.Event ), _event, out data ).AssertSuccess();
 					string event_json = fsJsonPrinter.CompressedJson( data );
 
-					utils.Log( $"sending -- player_id: { space_with_friends.Core.player_id } event_json: { event_json }", "RPMBridge" );
-
-					Core.client.broadcast( new msg.rpm_event {
-						player_id = space_with_friends.Core.player_id,
-						event_json = event_json
+					Core.client.send( new space_with_friends.msg {
+						world_id = space_with_friends.Core.world_id,
+						source = space_with_friends.Core.player_id,
+						world_time = Planetarium.GetUniversalTime(),
+						type = "rpm_event",
+						message = event_json
 					} );
 					break;
 			}
 		}
 
-		void on_network_message( string from, object msg ) {
-			utils.Log( $"net from: { from } type: { msg.GetType() }", "RPMBridge" );
-			if ( msg is msg.rpm_event rpm_event ) {
+		void on_network_message( space_with_friends.msg msg ) {
+			utils.Log( $"net from: { msg.source } type: { msg.type }", "RPMBridge" );
+			if ( msg.type != "rpm_event" ) {
+				return;
+			}
 
-				try {
-					fsData data = fsJsonParser.Parse( rpm_event.event_json );
+			try {
+				fsData data = fsJsonParser.Parse( msg.message );
 
-					object deserialized = null;
-					JSI.Core.Event _event = null;
-					_serializer.TryDeserialize( data, typeof( JSI.Core.Event ), ref deserialized ).AssertSuccess();
+				object deserialized = null;
+				_serializer.TryDeserialize( data, typeof( JSI.Core.Event ), ref deserialized ).AssertSuccess();
+				JSI.Core.Event _event = (JSI.Core.Event)deserialized;
 
-					_event = (JSI.Core.Event)deserialized;
-
-					if ( replaying.ContainsKey( _event.id ) ) {
-						utils.Log( $"  already replaying { _event.id }" );
-						return;
-					}
-
-					run_in_main.Enqueue( () => {
-						replaying.TryAdd( _event.id, true );
-
-						switch( _event.type ) {
-							case "click":
-							case "release":
-								try {
-									utils.Log( $"replay: {rpm_event.player_id}: { _event.type } { _event.vessel_id.ToString() } { ( (JSI.Core.EventData)_event.data ).propID } { ( (JSI.Core.EventData)_event.data ).buttonName }", "RPMBridge" );
-									JSI.SmarterButton.Replay( _event );
-								}
-								catch( Exception ex ) {
-									UnityEngine.Debug.LogError( ex.StackTrace );
-								}
-								break;
-							default:
-								utils.Log( "  unknown type: " + _event.type, "RPMBridge" );
-								break;
-						}
-
-						replaying.TryRemove( _event.id, out var removed );
-					} );
-				}
-				catch (System.Exception ex) {
-					UnityEngine.Debug.LogError( ex.StackTrace );
+				if ( replaying.ContainsKey( _event.id ) ) {
+					utils.Log( $"  already replaying { _event.id }" );
 					return;
 				}
+
+				run_in_main.Enqueue( () => {
+					replaying.TryAdd( _event.id, true );
+
+					switch( _event.type ) {
+						case "click":
+						case "release":
+							try {
+								utils.Log( $"replay: {msg.source}: { _event.type } { _event.vessel_id.ToString() } { ( (JSI.Core.EventData)_event.data ).propID } { ( (JSI.Core.EventData)_event.data ).buttonName }", "RPMBridge" );
+								JSI.SmarterButton.Replay( _event );
+							}
+							catch( Exception ex ) {
+								UnityEngine.Debug.LogError( ex.StackTrace );
+							}
+							break;
+						default:
+							utils.Log( "  unknown type: " + _event.type, "RPMBridge" );
+							break;
+					}
+
+					replaying.TryRemove( _event.id, out var removed );
+				} );
+			}
+			catch (System.Exception ex) {
+				UnityEngine.Debug.LogError( ex.StackTrace );
+				return;
 			}
 		}
 	}

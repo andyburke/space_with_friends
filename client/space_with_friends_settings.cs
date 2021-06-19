@@ -9,6 +9,7 @@ namespace space_with_friends {
 	public class space_with_friends_settings : ScenarioModule {
 		public string host = "";
 		public UInt16 port = 7887;
+		public Guid world_id = Guid.Empty;
 
 		public static space_with_friends_settings instance;
 
@@ -37,6 +38,7 @@ namespace space_with_friends {
 		public override void OnSave( ConfigNode node ) {
 			node.AddValue( "host", host );
 			node.AddValue( "port", port.ToString() );
+			node.AddValue( "world_id", world_id.ToString() );
 		}
 
 		public override void OnLoad( ConfigNode node ) {
@@ -50,9 +52,17 @@ namespace space_with_friends {
 				port = UInt16.Parse( node.GetValue( "port" ) );
 			}
 
+			if ( node.HasValue( "world_id" ) ) {
+				world_id = Guid.Parse( node.GetValue( "world_id" ) );
+			}
+			else {
+				world_id = Guid.NewGuid();
+			}
+
 			utils.Log( "loaded host/port info from save game" );
-			utils.Log( $"  host: { host }" );
-			utils.Log( $"  port: { port }" );
+			utils.Log( $"      host: { host }" );
+			utils.Log( $"      port: { port }" );
+			utils.Log( $"  world_id: { world_id.ToString() }" );
 		}
 	}
 }

@@ -30,8 +30,6 @@ namespace space_with_friends {
 
 		}
 
-
-
 		static void acceptClients() {
 			log.info( $"Starting listener on {port}" );
 			var listener = new TcpListener( IPAddress.Any, port );

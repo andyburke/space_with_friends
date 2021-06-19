@@ -9,15 +9,13 @@ namespace swf_common {
 	using System.Net.Sockets;
 	using System.Threading.Tasks;
 
-	using space_with_friends.msg;
-
 	public class ClientBase {
 		TcpClient _client;
 		NetworkStream _netStream;
 		CerasSerializer _sendCeras;
 		CerasSerializer _receiveCeras;
 
-		public event Action<string, object> on_message;
+		public event Action<space_with_friends.msg> on_message;
 
 		public void connect( string host, UInt16 port ) {
 			// Create network connection	
@@ -55,19 +53,9 @@ namespace swf_common {
 			_client = null;
 		}
 
-
-		public void broadcast<T>( T msg ) {
-			sendRaw( new SendToAll { Message = msg } );
+		public void send( space_with_friends.msg message ) {
+			_sendCeras.WriteToStream( _netStream, message );
 		}
-
-		public void server<T>( T msg ) {
-			sendRaw( new SendToServer { Message = msg } );
-		}
-
-		public void sendTo<T>( string target, T msg ) {
-			sendRaw( new SendToTarget { Target = target, Message = msg } );
-		}
-
 
 		public void startReceiving() {
 // FIXME: immutable issues
@@ -77,7 +65,7 @@ namespace swf_common {
 					while (true) {
 						// Read until we received the next message from the server
 						var msg = await _receiveCeras.ReadFromStream( _netStream );
-						HandleMessage( msg );
+						HandleMessage( (space_with_friends.msg)msg );
 					}
 				}
 				catch (Exception e) {
@@ -87,17 +75,8 @@ namespace swf_common {
 			} );
 		}
 
-		public virtual void HandleMessage( object msg ) {
-			if( msg is SendFromTarget from_target ) {
-				on_message.Invoke( from_target.Target, from_target.Message );
-			}
-			else {
-// FIXME: immutable issues
-//				log.error( "unhandled message type: " + msg.GetType() );
-			}
+		public virtual void HandleMessage( space_with_friends.msg message ) {
+			on_message.Invoke( message );
 		}
-
-		// A little helper function that sends any object to the server
-		protected void sendRaw( object msg ) => _sendCeras.WriteToStream( _netStream, msg );
 	}
 }
