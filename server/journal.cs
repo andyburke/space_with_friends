@@ -40,7 +40,7 @@ namespace space_with_friends {
 				SqliteConnection new_connection = new SqliteConnection( $"Data Source=worlds/{ world_id }.db" );
  
  				SQLitePCL.Batteries.Init();
- 				SQLitePCL.raw.SetProvider( new SQLitePCL.SQLite3Provider_e_sqlite3() );
+// 				SQLitePCL.raw.SetProvider( new SQLitePCL.SQLite3Provider_e_sqlite3() );
 
 				connections.TryAdd( world_id, new_connection );
 				existing_connection = new_connection;
