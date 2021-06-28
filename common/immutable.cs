@@ -18,6 +18,10 @@ namespace space_with_friends {
 				retry = Interlocked.CompareExchange( ref orig, combined, snapshot )
 						  != snapshot;
 				++count;
+
+				if ( count > 100 ) {
+					throw new Exception( "could not add to immutable list" );
+				}
 			} while (retry);
 
 			return count;
@@ -32,6 +36,10 @@ namespace space_with_friends {
 				retry = Interlocked.CompareExchange( ref orig, combined, snapshot )
 						  != snapshot;
 				++count;
+
+				if ( count > 100 ) {
+					throw new Exception( "could not remove from immutable list" );
+				}
 			} while (retry);
 
 			return count;

@@ -9,7 +9,8 @@ namespace space_with_friends {
 	[KSPAddon( KSPAddon.Startup.FlightEditorAndKSC, once: true )]
 	public class Core : MonoBehaviour {
 
-		public static space_with_friends.Client client;
+		public static space_with_friends.Client client = new space_with_friends.Client();
+		public static bool initialized = false;
 		public static string player_id;
 		public static Guid world_id;
 
@@ -19,14 +20,11 @@ namespace space_with_friends {
 			utils.Log( "starting" );
 
 			if ( space_with_friends_settings.instance.host != "" ) {
-				if (client != null) {
-					utils.Log( "client is not null" );
+				if (initialized) {
 					return;
 				}
 
 				world_id = space_with_friends_settings.instance.world_id;
-
-				client = new space_with_friends.Client();
 
 				utils.Log( "connecting" );
 				utils.Log( "host: " + space_with_friends_settings.instance.host + " port: " + space_with_friends_settings.instance.port );
@@ -47,6 +45,8 @@ namespace space_with_friends {
 					}
 				}
 				utils.Log( "player_id: " + player_id );
+
+				initialized = true;
 
 				client.send( new msg {
 					world_id = world_id,
@@ -72,8 +72,8 @@ namespace space_with_friends {
 					type = "logout"
 				} );
 				client.disconnect();
-				client = null;
 				utils.Log( "disconnected" );
+				initialized = false;
 			}
 		}
 	}
