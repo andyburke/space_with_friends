@@ -98,7 +98,7 @@ namespace space_with_friends {
 		public static void on_message( space_with_friends.msg msg ) {
 			switch( msg.type ) {
 				case "vessel_rollout": {
-					utils.Log( $"vessel_create: { msg.vessel_id }" );
+					utils.Log( $"vessel_rollout: { msg.vessel_id }" );
 					ProtoVessel created_protovessel = deserialize_protovessel( msg.message );
 					Vessel existing_vessel = FlightGlobals.FindVessel( created_protovessel.vesselID );
 					if ( existing_vessel != null ) {
@@ -106,21 +106,7 @@ namespace space_with_friends {
 						return;
 					}
 
-					utils.Log( "  creating pending vessel" );
-					created_protovessel.Load( HighLogic.CurrentGame.flightState );
-
-					created_protovessel.vesselRef.protoVessel = created_protovessel;
-					if ( created_protovessel.vesselRef.isEVA )
-					{
-						var eva_module = created_protovessel.vesselRef.FindPartModuleImplementing<KerbalEVA>();
-						if ( eva_module != null && eva_module.fsm != null && !eva_module.fsm.Started )
-						{
-							eva_module.fsm.StartFSM( "Idle (Grounded)" );
-						}
-						created_protovessel.vesselRef.GoOnRails();
-					}
-
-					bool pending = pending_vessels.TryAdd( created_protovessel.vesselID, created_protovessel );
+					bool pending = pending_vessels.TryAdd( msg.vessel_id, created_protovessel );
 					if ( !pending ) {
 						utils.Log( $"  ERROR: could not add { created_protovessel.vesselID.ToString() }" );
 						return;
@@ -155,17 +141,30 @@ namespace space_with_friends {
 							created_protovessel.height = vessel_position.height;
 							created_protovessel.normal = vessel_position.normal;
 
-							created_protovessel.vesselRef.Load();
-							existing_vessel = created_protovessel.vesselRef;
+							utils.Log( "  creating pending vessel" );
+							created_protovessel.Load( HighLogic.CurrentGame.flightState );
+							utils.Log( "  loaded vessel" );
 
-							// existing_vessel.RebuildCrewList();
-							// existing_vessel.SpawnCrew();
-
-							foreach ( var crew in existing_vessel.GetVesselCrew() )
+							created_protovessel.vesselRef.protoVessel = created_protovessel;
+							if ( created_protovessel.vesselRef.isEVA )
 							{
-								ProtoCrewMember._Spawn( crew );
-								if ( crew.KerbalRef )
-									crew.KerbalRef.state = Kerbal.States.ALIVE;
+								var eva_module = created_protovessel.vesselRef.FindPartModuleImplementing<KerbalEVA>();
+								if ( eva_module != null && eva_module.fsm != null && !eva_module.fsm.Started )
+								{
+									eva_module.fsm.StartFSM( "Idle (Grounded)" );
+								}
+								created_protovessel.vesselRef.GoOnRails();
+							}
+							else {
+								created_protovessel.vesselRef.Load();
+								existing_vessel = created_protovessel.vesselRef;
+
+								foreach ( var crew in existing_vessel.GetVesselCrew() )
+								{
+									ProtoCrewMember._Spawn( crew );
+									if ( crew.KerbalRef )
+										crew.KerbalRef.state = Kerbal.States.ALIVE;
+								}
 							}
 						}
 
@@ -349,11 +348,24 @@ namespace space_with_friends {
 			// TODO: set a timeout of a few ms, then get the active vessel and send it (or match something from the ship_construct to verify)
 			// TODO: move vessel serialization here
 
-			ProtoVessel protovessel = vessel?.protoVessel;
+			ProtoVessel protovessel = vessel?.BackupVessel();
 			if ( protovessel == null ) {
 				utils.Log( "  no protovessel" );
 				return;
 			}
+
+			ConfigNode roster_node = new ConfigNode();
+			HighLogic.CurrentGame.CrewRoster.Save( roster_node );
+			string roster_message = roster_node.ToString();
+
+			Core.client?.send( new msg {
+				world_id = space_with_friends.Core.world_id,
+				source = space_with_friends.Core.player_id,
+				world_time = Planetarium.GetUniversalTime(),
+				vessel_id = protovessel.vesselID,
+				type = "roster",
+				message = roster_message
+			} );
 
 			Core.client?.send( new msg {
 				world_id = space_with_friends.Core.world_id,
