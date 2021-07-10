@@ -18,3 +18,4 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyInformationalVersion("0.1.0-compiled")]
 
 [assembly: KSPAssembly("space_with_friends", 0, 1, 0)]
+//[assembly: KSPAssemblyDependency("", 1, 0)]
