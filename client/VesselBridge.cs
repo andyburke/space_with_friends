@@ -11,6 +11,12 @@ using UnityEngine;
 
 namespace space_with_friends {
 
+	public class ProtoVesselMeta {
+		public ConfigNode vessel_config_node;
+		public ProtoVessel protovessel;
+		public List< string > crewmembers;
+	}
+
 	public class VesselPosition {
 		public double time;
 		public OrbitSnapshot orbit_snapshot;
@@ -94,21 +100,21 @@ namespace space_with_friends {
 			}
 		}
 
-		public static ConcurrentDictionary< Guid, ProtoVessel > pending_vessels = new ConcurrentDictionary< Guid, ProtoVessel >();
+		public static ConcurrentDictionary< Guid, ProtoVesselMeta > pending_vessels = new ConcurrentDictionary< Guid, ProtoVesselMeta >();
 		public static void on_message( space_with_friends.msg msg ) {
 			switch( msg.type ) {
 				case "vessel_rollout": {
 					utils.Log( $"vessel_rollout: { msg.vessel_id }" );
-					ProtoVessel created_protovessel = deserialize_protovessel( msg.message );
-					Vessel existing_vessel = FlightGlobals.FindVessel( created_protovessel.vesselID );
+					ProtoVesselMeta protovessel_meta = deserialize_protovessel( msg.message );
+					Vessel existing_vessel = FlightGlobals.FindVessel( protovessel_meta.protovessel.vesselID );
 					if ( existing_vessel != null ) {
 						utils.Log( "  exists, skipping" );
 						return;
 					}
 
-					bool pending = pending_vessels.TryAdd( msg.vessel_id, created_protovessel );
+					bool pending = pending_vessels.TryAdd( msg.vessel_id, protovessel_meta );
 					if ( !pending ) {
-						utils.Log( $"  ERROR: could not add { created_protovessel.vesselID.ToString() }" );
+						utils.Log( $"  ERROR: could not add { protovessel_meta.protovessel.vesselID.ToString() }" );
 						return;
 					}
 				}
@@ -117,11 +123,11 @@ namespace space_with_friends {
 					utils.Log( $"vessel_position: { msg.vessel_id }" );
 
 					Vessel existing_vessel = FlightGlobals.Vessels.Find( v => v.id == msg.vessel_id );
-					ProtoVessel created_protovessel = null;
+					ProtoVesselMeta protovessel_meta = null;
 					if ( !existing_vessel ) {
 						utils.Log( $"  missing vessel: { msg.vessel_id }" );
 
-						if ( !pending_vessels.TryGetValue( msg.vessel_id, out created_protovessel ) ) {
+						if ( !pending_vessels.TryGetValue( msg.vessel_id, out protovessel_meta ) ) {
 							utils.Log( $"  postiion update for non-existent, non-pending vessel: { msg.vessel_id }" );
 							return;
 						}
@@ -135,35 +141,75 @@ namespace space_with_friends {
 
 					run_in_main.Enqueue( () => {
 
-						if ( created_protovessel != null ) {
-							created_protovessel.orbitSnapShot = vessel_position.orbit_snapshot;
-							created_protovessel.rotation = vessel_position.rotation;
-							created_protovessel.height = vessel_position.height;
-							created_protovessel.normal = vessel_position.normal;
+						if ( protovessel_meta != null ) {
+							protovessel_meta.protovessel.orbitSnapShot = vessel_position.orbit_snapshot;
+							protovessel_meta.protovessel.rotation = vessel_position.rotation;
+							protovessel_meta.protovessel.height = vessel_position.height;
+							protovessel_meta.protovessel.normal = vessel_position.normal;
 
+// need to set crew indexes in the global roster?
 							utils.Log( "  creating pending vessel" );
-							created_protovessel.Load( HighLogic.CurrentGame.flightState );
-							utils.Log( "  loaded vessel" );
 
-							created_protovessel.vesselRef.protoVessel = created_protovessel;
-							if ( created_protovessel.vesselRef.isEVA )
+							bool can_spawn_vessel = true;
+							foreach ( ProtoPartSnapshot snapshot in protovessel_meta.protovessel.protoPartSnapshots )
 							{
-								var eva_module = created_protovessel.vesselRef.FindPartModuleImplementing<KerbalEVA>();
+								if ( snapshot.partInfo == null )
+								{
+									utils.Log( $"  ERROR: protovessel { protovessel_meta.protovessel.vesselName } has missing part '{ snapshot.partName }': skipping load" );
+									can_spawn_vessel = false;
+									break;
+								}
+
+								foreach ( ProtoPartResourceSnapshot resource in snapshot.resources )
+								{
+									if ( !PartResourceLibrary.Instance.resourceDefinitions.Contains( resource.resourceName ) )
+									{
+										utils.Log( $"  ERROR: protovessel { protovessel_meta.protovessel.vesselName } has missing resource '{ resource.resourceName }': skipping load" );
+										can_spawn_vessel = false;
+										break;
+									}
+								}
+							}
+
+							List< ProtoCrewMember > crew = protovessel_meta.protovessel.GetVesselCrew();
+							if ( crew.Count != protovessel_meta.crewmembers.Count ) {
+								utils.Log( $"  ERROR: protovessel crew count: { crew.Count } / incoming crew count: { protovessel_meta.crewmembers.Count }" );
+								can_spawn_vessel = false;
+							}
+
+							if ( !can_spawn_vessel ) {
+								return;
+							}
+
+							try {
+								protovessel_meta.protovessel.Load( HighLogic.CurrentGame.flightState );
+								utils.Log( "  loaded vessel" );
+							}
+							catch( Exception ex ) {
+								utils.Log( "EXCEPTION LOADING PROTOVESSEL" );
+								utils.Log( ex.ToString() );
+								return;
+							}
+
+							protovessel_meta.protovessel.vesselRef.protoVessel = protovessel_meta.protovessel;
+							if ( protovessel_meta.protovessel.vesselRef.isEVA )
+							{
+								var eva_module = protovessel_meta.protovessel.vesselRef.FindPartModuleImplementing<KerbalEVA>();
 								if ( eva_module != null && eva_module.fsm != null && !eva_module.fsm.Started )
 								{
 									eva_module.fsm.StartFSM( "Idle (Grounded)" );
 								}
-								created_protovessel.vesselRef.GoOnRails();
+								protovessel_meta.protovessel.vesselRef.GoOnRails();
 							}
 							else {
-								created_protovessel.vesselRef.Load();
-								existing_vessel = created_protovessel.vesselRef;
+								protovessel_meta.protovessel.vesselRef.Load();
+								existing_vessel = protovessel_meta.protovessel.vesselRef;
 
-								foreach ( var crew in existing_vessel.GetVesselCrew() )
+								foreach ( var crewmember in existing_vessel.GetVesselCrew() )
 								{
-									ProtoCrewMember._Spawn( crew );
-									if ( crew.KerbalRef )
-										crew.KerbalRef.state = Kerbal.States.ALIVE;
+									ProtoCrewMember._Spawn( crewmember );
+									if ( crewmember.KerbalRef )
+										crewmember.KerbalRef.state = Kerbal.States.ALIVE;
 								}
 							}
 						}
@@ -358,6 +404,8 @@ namespace space_with_friends {
 			HighLogic.CurrentGame.CrewRoster.Save( roster_node );
 			string roster_message = roster_node.ToString();
 
+			utils.Log( roster_message );
+
 			Core.client?.send( new msg {
 				world_id = space_with_friends.Core.world_id,
 				source = space_with_friends.Core.player_id,
@@ -439,10 +487,49 @@ namespace space_with_friends {
 			return protovessel_message;
 		}
 
-		public static ProtoVessel deserialize_protovessel( string protovessel_message ) {
-			ConfigNode protovessel_node = ConfigNode.Parse( protovessel_message );
-			ProtoVessel protovessel = new ProtoVessel( protovessel_node, HighLogic.CurrentGame );
-			return protovessel;
+		public static ProtoVesselMeta deserialize_protovessel( string protovessel_message ) {
+			ProtoVesselMeta result = new ProtoVesselMeta();
+
+			result.vessel_config_node = ConfigNode.Parse( protovessel_message );
+			clean_protovessel_nodes( result );
+			result.protovessel = new ProtoVessel( result.vessel_config_node, HighLogic.CurrentGame );
+			return result;
+		}
+
+		public static string get_updated_time_value( string input ) {
+			string value = input.Substring( 0, input.IndexOf( ", ", StringComparison.Ordinal ) );
+			string time = input.Substring( input.IndexOf( ", ", StringComparison.Ordinal) + 1 );
+			double updated_time = Math.Min( Double.Parse( time ), Planetarium.GetUniversalTime() );
+			return $"{ value }, { updated_time }";
+		}
+
+		public static string[] CLEAN_NODE_TYPES = {
+			"ACTIONGROUPS"
+		};
+
+		public static void clean_protovessel_nodes( ProtoVesselMeta protovessel_meta ) {
+			foreach( string node_type in CLEAN_NODE_TYPES ) {
+				ConfigNode node = protovessel_meta.vessel_config_node.GetNode( node_type );
+				if ( node == null ) {
+					continue;
+				}
+
+				foreach ( string key in node.values.DistinctNames() )
+				{
+					node.SetValue( key, get_updated_time_value( node.GetValue( key ) ) );
+				}
+			}
+
+			protovessel_meta.crewmembers = new List< string >();
+			foreach ( ConfigNode node in protovessel_meta.vessel_config_node.GetNodes( "PART" ) ) {
+				foreach ( string name in node.GetValues( "crew" ) ) {
+					protovessel_meta.crewmembers.Add( name );
+				}
+			}
+
+			string situation = protovessel_meta.vessel_config_node.GetValue( "sit" );
+			protovessel_meta.vessel_config_node.SetValue( "landed", situation == "LANDED" ? "True" : "False" );
+			protovessel_meta.vessel_config_node.SetValue( "splashed", situation == "SPLASHED" ? "True" : "False" );
 		}
 	}
 }
