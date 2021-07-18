@@ -177,8 +177,68 @@ namespace space_with_friends {
 								can_spawn_vessel = false;
 							}
 
+							if ( protovessel_meta.protovessel.protoPartSnapshots == null ) {
+								utils.Log( $"  ERROR: protovessel protoPartSnapshots is null" );
+								can_spawn_vessel = false;
+							}
+							else {
+								for ( int index = 0; index < protovessel_meta.protovessel.protoPartSnapshots.Count; ++index ) {
+									if ( protovessel_meta.protovessel.protoPartSnapshots[ index ] == null ) {
+										utils.Log( $"  ERROR: protovessel protoPartSnapshots[ { index } ] is null" );
+										can_spawn_vessel = false;
+										break;
+									}
+									if ( protovessel_meta.protovessel.protoPartSnapshots[ index ].partName == null ) {
+										utils.Log( $"  ERROR: protovessel protoPartSnapshots[ { index } ].partName is null" );
+										can_spawn_vessel = false;
+										break;
+									}
+								}
+							}
+
+							if ( protovessel_meta.protovessel.orbitSnapShot == null ) {
+								utils.Log( $"  ERROR: protovessel orbitSnapShot is null" );
+								can_spawn_vessel = false;
+							}
+
+							if ( protovessel_meta.protovessel.OverrideDefault == null ) {
+								utils.Log( $"  ERROR: protovessel OverrideDefault is null" );
+								can_spawn_vessel = false;
+							}
+
+							if ( protovessel_meta.protovessel.OverrideActionControl == null ) {
+								utils.Log( $"  ERROR: protovessel OverrideActionControl is null" );
+								can_spawn_vessel = false;
+							}
+
+							if ( protovessel_meta.protovessel.OverrideAxisControl == null ) {
+								utils.Log( $"  ERROR: protovessel OverrideAxisControl is null" );
+								can_spawn_vessel = false;
+							}
+
+							if ( protovessel_meta.protovessel.OverrideGroupNames == null ) {
+								utils.Log( $"  ERROR: protovessel OverrideGroupNames is null" );
+								can_spawn_vessel = false;
+							}
+
 							if ( !can_spawn_vessel ) {
 								return;
+							}
+
+							int crew_index = 0;
+							foreach ( string crewmember_name in protovessel_meta.crewmembers ) {
+								if ( !HighLogic.CurrentGame.CrewRoster.Exists( crewmember_name ) )
+								{
+									ProtoCrewMember crewmember = CrewGenerator.RandomCrewMemberPrototype( ProtoCrewMember.KerbalType.Crew );
+									HighLogic.CurrentGame.CrewRoster.AddCrewMember( crewmember );
+									crewmember.ChangeName( crewmember_name );
+									crewmember.rosterStatus = ProtoCrewMember.RosterStatus.Assigned;
+									utils.Log( $"  WARN: generated a missing kerbal [{ crewmember.name }] from vessel { protovessel_meta.protovessel.vesselName }" );
+								}
+
+								HighLogic.CurrentGame.CrewRoster[ crewmember_name ].rosterStatus = ProtoCrewMember.RosterStatus.Assigned;
+								HighLogic.CurrentGame.CrewRoster[ crewmember_name ].seatIdx = crew_index;
+								++crew_index;
 							}
 
 							try {
@@ -404,8 +464,12 @@ namespace space_with_friends {
 			HighLogic.CurrentGame.CrewRoster.Save( roster_node );
 			string roster_message = roster_node.ToString();
 
-			utils.Log( roster_message );
+			OrbitSnapshot orbit_snapshot = protovessel.orbitSnapShot;
+			Orbit orbit = protovessel.orbitSnapShot.Load();
+			double now = Planetarium.GetUniversalTime();
+			Vector3d position = orbit.getTruePositionAtUT( now );
 
+			utils.Log( "  sending roster" );
 			Core.client?.send( new msg {
 				world_id = space_with_friends.Core.world_id,
 				source = space_with_friends.Core.player_id,
@@ -415,19 +479,16 @@ namespace space_with_friends {
 				message = roster_message
 			} );
 
+			utils.Log( "  sending vessel_rollout" );
+			string vessel_rollout_message = serialize_protovessel( protovessel );
 			Core.client?.send( new msg {
 				world_id = space_with_friends.Core.world_id,
 				source = space_with_friends.Core.player_id,
 				world_time = Planetarium.GetUniversalTime(),
 				vessel_id = protovessel.vesselID,
 				type = "vessel_rollout",
-				message = serialize_protovessel( protovessel )
+				message = vessel_rollout_message
 			} );
-
-			OrbitSnapshot orbit_snapshot = protovessel.orbitSnapShot;
-			Orbit orbit = protovessel.orbitSnapShot.Load();
-			double now = Planetarium.GetUniversalTime();
-			Vector3d position = orbit.getTruePositionAtUT( now );
 
 			fsData data;
 			_serializer.TrySerialize( typeof( VesselPosition ), new {
@@ -444,6 +505,7 @@ namespace space_with_friends {
 			}, out data ).AssertSuccess();
 			string json = fsJsonPrinter.CompressedJson( data );
 
+			utils.Log( "  sending vessel_position" );
 			Core.client?.send( new msg {
 				world_id = space_with_friends.Core.world_id,
 				source = space_with_friends.Core.player_id,
@@ -492,7 +554,15 @@ namespace space_with_friends {
 
 			result.vessel_config_node = ConfigNode.Parse( protovessel_message );
 			clean_protovessel_nodes( result );
-			result.protovessel = new ProtoVessel( result.vessel_config_node, HighLogic.CurrentGame );
+
+			// copy node because it seems loading the protovessel is destructive of it
+			ConfigNode vessel_node = new ConfigNode();
+			result.vessel_config_node.CopyTo( vessel_node );
+
+			result.protovessel = new ProtoVessel( vessel_node, HighLogic.CurrentGame );
+
+			ensure_orbit_snapshot( result );
+
 			return result;
 		}
 
@@ -530,6 +600,37 @@ namespace space_with_friends {
 			string situation = protovessel_meta.vessel_config_node.GetValue( "sit" );
 			protovessel_meta.vessel_config_node.SetValue( "landed", situation == "LANDED" ? "True" : "False" );
 			protovessel_meta.vessel_config_node.SetValue( "splashed", situation == "SPLASHED" ? "True" : "False" );
+		}
+
+		public static void ensure_orbit_snapshot( ProtoVesselMeta protovessel_meta ) {
+			utils.Log( "ensure_orbit_snapshot" );
+			if ( protovessel_meta.protovessel.orbitSnapShot == null ) {
+				utils.Log( "  orbitSnapShot is null" );
+				foreach ( ConfigNode node in protovessel_meta.vessel_config_node.nodes ) {
+					utils.Log( $"  { node.name }" );
+				}
+				ConfigNode orbit_node = protovessel_meta.vessel_config_node.GetNode( "ORBIT" );
+				if ( orbit_node == null ) {
+					utils.Log( "  orbit_node is null" );
+					throw new Exception( "received protovessel without Orbit node" );
+				}
+
+				utils.Log( "  creating OrbitSnapshot from orbit node" );
+				protovessel_meta.protovessel.orbitSnapShot = new OrbitSnapshot( orbit_node );
+
+				// if ( orbit_node != null ) {
+				// 	protovessel_meta.protovessel.orbitSnapShot.semiMajorAxis = orbit_node.GetValue( "SMA" );
+				// 	protovessel_meta.protovessel.orbitSnapShot.eccentricity = orbit_node.GetValue( "ECC" );
+				// 	protovessel_meta.protovessel.orbitSnapShot.inclination = orbit_node.GetValue( "INC" );
+				// 	protovessel_meta.protovessel.orbitSnapShot.argOfPeriapsis = orbit_node.GetValue( "LPE" );
+				// 	protovessel_meta.protovessel.orbitSnapShot.LAN = orbit_node.GetValue( "LAN" );
+				// 	protovessel_meta.protovessel.orbitSnapShot.meanAnomalyAtEpoch = orbit_node.GetValue( "MNA" );
+				// 	protovessel_meta.protovessel.orbitSnapShot.epoch = orbit_node.GetValue( "EPH" );
+				// 	protovessel_meta.protovessel.orbitSnapShot.ReferenceBodyIndex = orbit_node.GetValue( "REF" );
+				// }
+			}
+
+			utils.Log( "  done ensuring orbit snapshot" );
 		}
 	}
 }
