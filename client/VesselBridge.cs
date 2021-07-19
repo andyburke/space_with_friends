@@ -19,7 +19,7 @@ namespace space_with_friends {
 
 	public class VesselPosition {
 		public double time;
-		public OrbitSnapshot orbit_snapshot;
+		public string orbit_snapshot_string;
 		public Vector3d position;
 		public double latitude;
 		public double longitude;
@@ -106,6 +106,11 @@ namespace space_with_friends {
 				case "vessel_rollout": {
 					utils.Log( $"vessel_rollout: { msg.vessel_id }" );
 					ProtoVesselMeta protovessel_meta = deserialize_protovessel( msg.message );
+
+					if ( protovessel_meta.protovessel == null ) {
+						return;
+					}
+
 					Vessel existing_vessel = FlightGlobals.FindVessel( protovessel_meta.protovessel.vesselID );
 					if ( existing_vessel != null ) {
 						utils.Log( "  exists, skipping" );
@@ -142,7 +147,13 @@ namespace space_with_friends {
 					run_in_main.Enqueue( () => {
 
 						if ( protovessel_meta != null ) {
-							protovessel_meta.protovessel.orbitSnapShot = vessel_position.orbit_snapshot;
+
+							ConfigNode orbit_snapshot_node = ConfigNode.Parse( vessel_position.orbit_snapshot_string ).nodes[ 0 ];
+							// utils.Log( "orbit_snapshot_node" );
+							// utils.Log( orbit_snapshot_node.ToString() );
+
+							protovessel_meta.protovessel.orbitSnapShot = new OrbitSnapshot( orbit_snapshot_node );
+
 							protovessel_meta.protovessel.rotation = vessel_position.rotation;
 							protovessel_meta.protovessel.height = vessel_position.height;
 							protovessel_meta.protovessel.normal = vessel_position.normal;
@@ -225,6 +236,9 @@ namespace space_with_friends {
 								return;
 							}
 
+							utils.Log( "  adding protovessel to flightstate" );
+							HighLogic.CurrentGame.flightState.protoVessels.Add( protovessel_meta.protovessel );
+
 							int crew_index = 0;
 							foreach ( string crewmember_name in protovessel_meta.crewmembers ) {
 								if ( !HighLogic.CurrentGame.CrewRoster.Exists( crewmember_name ) )
@@ -242,6 +256,7 @@ namespace space_with_friends {
 							}
 
 							try {
+								// TODO: should we not be actually loading it if they're in the wrong scene/too far away?
 								protovessel_meta.protovessel.Load( HighLogic.CurrentGame.flightState );
 								utils.Log( "  loaded vessel" );
 							}
@@ -272,6 +287,11 @@ namespace space_with_friends {
 										crewmember.KerbalRef.state = Kerbal.States.ALIVE;
 								}
 							}
+						}
+
+						if ( existing_vessel == null ) {
+							utils.Log( "  no existing vessel!" );
+							return;
 						}
 
 						existing_vessel.latitude = vessel_position.latitude;
@@ -454,7 +474,9 @@ namespace space_with_friends {
 			// TODO: set a timeout of a few ms, then get the active vessel and send it (or match something from the ship_construct to verify)
 			// TODO: move vessel serialization here
 
-			ProtoVessel protovessel = vessel?.BackupVessel();
+			// ProtoVessel protovessel = vessel?.BackupVessel();
+
+			ProtoVessel protovessel = vessel?.protoVessel;
 			if ( protovessel == null ) {
 				utils.Log( "  no protovessel" );
 				return;
@@ -491,21 +513,26 @@ namespace space_with_friends {
 			} );
 
 			fsData data;
-			_serializer.TrySerialize( typeof( VesselPosition ), new {
-				time = now,
-				orbit_snapshot = orbit_snapshot,
-				position = position,
-				latitude = protovessel.latitude,
-				longitude = protovessel.longitude,
-				altitude = protovessel.altitude,
-				rotation = protovessel.rotation,
-				height = protovessel.height,
-				normal = protovessel.normal,
-				CoM = protovessel.CoM
-			}, out data ).AssertSuccess();
+			ConfigNode orbit_node = new ConfigNode( "root" );
+			orbit_snapshot.Save( orbit_node );
+
+			VesselPosition vessel_position = new VesselPosition();
+			vessel_position.time = now;
+			vessel_position.orbit_snapshot_string = orbit_node.ToString();
+			vessel_position.position = position;
+			vessel_position.latitude = protovessel.latitude;
+			vessel_position.longitude = protovessel.longitude;
+			vessel_position.altitude = protovessel.altitude;
+			vessel_position.rotation = protovessel.rotation;
+			vessel_position.height = protovessel.height;
+			vessel_position.normal = protovessel.normal;
+			vessel_position.CoM = protovessel.CoM;
+
+			_serializer.TrySerialize( typeof( VesselPosition ), vessel_position, out data ).AssertSuccess();
 			string json = fsJsonPrinter.CompressedJson( data );
 
 			utils.Log( "  sending vessel_position" );
+			utils.Log( json );
 			Core.client?.send( new msg {
 				world_id = space_with_friends.Core.world_id,
 				source = space_with_friends.Core.player_id,
@@ -552,14 +579,30 @@ namespace space_with_friends {
 		public static ProtoVesselMeta deserialize_protovessel( string protovessel_message ) {
 			ProtoVesselMeta result = new ProtoVesselMeta();
 
-			result.vessel_config_node = ConfigNode.Parse( protovessel_message );
+
+			ConfigNode parsed = ConfigNode.Parse( protovessel_message );
+			if ( parsed == null || parsed.nodes.Count != 1 ) {
+				utils.Log( "ERROR: could not deserialize protovessel" );
+				return result;
+			}
+
+			result.vessel_config_node = parsed.nodes[ 0 ];
+			if ( result.vessel_config_node == null ) {
+				utils.Log( "ERROR: vessel node is missing/empty" );
+				return result;
+			}
+
+			// utils.Log( "parsed > string:" );
+			// utils.Log( result.vessel_config_node.ToString() );
+
+			// utils.Log( "parsed incoming ship nodes:" );
+			// foreach ( ConfigNode node in result.vessel_config_node.nodes ) {
+			// 	utils.Log( $"  { node.name }" );
+			// }
+
 			clean_protovessel_nodes( result );
 
-			// copy node because it seems loading the protovessel is destructive of it
-			ConfigNode vessel_node = new ConfigNode();
-			result.vessel_config_node.CopyTo( vessel_node );
-
-			result.protovessel = new ProtoVessel( vessel_node, HighLogic.CurrentGame );
+			result.protovessel = new ProtoVessel( result.vessel_config_node, HighLogic.CurrentGame );
 
 			ensure_orbit_snapshot( result );
 
