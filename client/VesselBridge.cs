@@ -287,12 +287,6 @@ namespace space_with_friends {
 								protovessel_meta.protovessel.vesselRef.GoOnRails();
 							}
 							else {
-								if ( !( protovessel_meta.protovessel.vesselRef.Landed || protovessel_meta.protovessel.vesselRef.Splashed ) ) {
-									protovessel_meta.protovessel.vesselRef.GoOnRails();
-								}
-
-								// protovessel_meta.protovessel.vesselRef.Load();
-
 								existing_vessel = protovessel_meta.protovessel.vesselRef;
 
 								foreach ( var crewmember in existing_vessel.GetVesselCrew() )
@@ -319,6 +313,10 @@ namespace space_with_friends {
 						existing_vessel.CoM = vessel_position.CoM;
 
 						utils.Log( $"  existing_vessel.situation: { existing_vessel.situation }" );
+						utils.Log( $"  loaded: { existing_vessel.loaded }" );
+						utils.Log( $"  packed: { existing_vessel.packed }" );
+						utils.Log( $"  Landed: { existing_vessel.Landed }" );
+						utils.Log( $"  Splashed: { existing_vessel.Splashed }" );
 						utils.Log( $"  latitude: { existing_vessel.latitude }" );
 						utils.Log( $"  longitude: { existing_vessel.longitude }" );
 						utils.Log( $"  altitude: { existing_vessel.altitude }" );
@@ -337,9 +335,25 @@ namespace space_with_friends {
 						utils.Log( $"    epoch: { orbit.epoch }" );
 						utils.Log( $"    referenceBody: { orbit.referenceBody }" );
 
+						existing_vessel.terrainAltitude = -1.0;
+						utils.Log( $"  terrainAltitude: { existing_vessel.terrainAltitude } (pre-orbit update)" );
+
 						existing_vessel.orbit.SetOrbit( orbit.inclination, orbit.eccentricity, orbit.semiMajorAxis, orbit.LAN, orbit.argumentOfPeriapsis, orbit.meanAnomalyAtEpoch, orbit.epoch, orbit.referenceBody );
 						existing_vessel.orbitDriver.orbit.UpdateFromOrbitAtUT( existing_vessel.orbitDriver.orbit, Planetarium.GetUniversalTime(), orbit.referenceBody );
 						existing_vessel.orbitDriver.updateFromParameters();
+
+						// existing_vessel.Load();
+
+						// existing_vessel.UpdatePosVel();
+
+						// if ( existing_vessel.situation < Vessel.Situations.FLYING ) {
+						// 	existing_vessel.altitude = vessel_position.altitude;
+						// 	existing_vessel.terrainAltitude = -1.0;
+						// }
+
+						utils.Log( "  (after load + orbit update)" );
+						utils.Log( $"  altitude: { existing_vessel.altitude }" );
+						utils.Log( $"  terrainAltitude: { existing_vessel.terrainAltitude }" );
 
 						// if it's an asteroid, make sure we don't have too many
 						bool is_rubble = vessel_utils.is_rubble( existing_vessel );
@@ -684,9 +698,9 @@ namespace space_with_friends {
 				}
 			}
 
-			string situation = protovessel_meta.vessel_config_node.GetValue( "sit" );
-			protovessel_meta.vessel_config_node.SetValue( "landed", situation == "LANDED" ? "True" : "False" );
-			protovessel_meta.vessel_config_node.SetValue( "splashed", situation == "SPLASHED" ? "True" : "False" );
+			// string situation = protovessel_meta.vessel_config_node.GetValue( "sit" );
+			// protovessel_meta.vessel_config_node.SetValue( "landed", situation == "LANDED" ? "True" : "False" );
+			// protovessel_meta.vessel_config_node.SetValue( "splashed", situation == "SPLASHED" ? "True" : "False" );
 		}
 
 		public static void ensure_orbit_snapshot( ProtoVesselMeta protovessel_meta ) {

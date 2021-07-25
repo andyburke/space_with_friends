@@ -47,6 +47,11 @@ namespace space_with_friends {
 			"YAW_RIGHT"
 		};
 
+		static Dictionary< string, string > UNITY_TO_VK = new Dictionary< string, string > {
+			{ "LEFTSHIFT", "LSHIFT" },
+			{ "RIGHTSHIFT", "RSHIFT" }
+		};
+
 		static bool initialized = false;
 
 		static GameSettings game_settings;
@@ -158,9 +163,17 @@ namespace space_with_friends {
 
 			utils.Log( $"vessel: { msg.vessel_id.ToString() } type: { msg.type } keybinding: { msg.message }" );
 
+			string keycode = keybinding.primary.code.ToString().ToUpper();
+			if ( UNITY_TO_VK.ContainsKey( keycode ) ) {
+				keycode = UNITY_TO_VK[ keycode ];
+			}
+
+			bool found_virtual_keycode = false;
 			VirtualKeyCode code;
-			if ( !Enum.TryParse<VirtualKeyCode>( $"VK_{ keybinding.primary.code.ToString().ToUpper() }", out code ) ) {
-				utils.Log( $"WARN: could not locate VKC VK_{ keybinding.primary.code.ToString().ToUpper() }" );
+			found_virtual_keycode = Enum.TryParse<VirtualKeyCode>( $"VK_{ keycode }", out code ) || Enum.TryParse<VirtualKeyCode>( keycode, out code );
+
+			if ( !found_virtual_keycode ) {
+				utils.Log( $"WARN: could not locate virtual keycode for { keycode }" );
 				return;
 			}
 
