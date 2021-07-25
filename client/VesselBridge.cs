@@ -144,15 +144,21 @@ namespace space_with_friends {
 					_serializer.TryDeserialize( data, typeof( VesselPosition ), ref deserialized ).AssertSuccess();
 					VesselPosition vessel_position = (VesselPosition)deserialized;
 
+					// TODO: if vessel_position.time is too far in the past, ignore?
+
 					run_in_main.Enqueue( () => {
+
+						ConfigNode orbit_snapshot_node = ConfigNode.Parse( vessel_position.orbit_snapshot_string ).nodes[ 0 ];
+ 						utils.Log( orbit_snapshot_node.ToString() );
+
+						OrbitSnapshot orbit_snapshot = new OrbitSnapshot( orbit_snapshot_node );
+						Orbit orbit = orbit_snapshot.Load();
 
 						if ( protovessel_meta != null ) {
 
-							ConfigNode orbit_snapshot_node = ConfigNode.Parse( vessel_position.orbit_snapshot_string ).nodes[ 0 ];
 							// utils.Log( "orbit_snapshot_node" );
 							// utils.Log( orbit_snapshot_node.ToString() );
-
-							protovessel_meta.protovessel.orbitSnapShot = new OrbitSnapshot( orbit_snapshot_node );
+							protovessel_meta.protovessel.orbitSnapShot = orbit_snapshot;
 
 							protovessel_meta.protovessel.rotation = vessel_position.rotation;
 							protovessel_meta.protovessel.height = vessel_position.height;
@@ -259,6 +265,11 @@ namespace space_with_friends {
 								// TODO: should we not be actually loading it if they're in the wrong scene/too far away?
 								protovessel_meta.protovessel.Load( HighLogic.CurrentGame.flightState );
 								utils.Log( "  loaded vessel" );
+
+								if ( protovessel_meta.protovessel.vesselRef == null ) {
+									utils.Log( "  protovessel.vesselRef is null!" );
+									return;
+								}
 							}
 							catch( Exception ex ) {
 								utils.Log( "EXCEPTION LOADING PROTOVESSEL" );
@@ -267,8 +278,7 @@ namespace space_with_friends {
 							}
 
 							protovessel_meta.protovessel.vesselRef.protoVessel = protovessel_meta.protovessel;
-							if ( protovessel_meta.protovessel.vesselRef.isEVA )
-							{
+							if ( protovessel_meta.protovessel.vesselRef.isEVA ) {
 								var eva_module = protovessel_meta.protovessel.vesselRef.FindPartModuleImplementing<KerbalEVA>();
 								if ( eva_module != null && eva_module.fsm != null && !eva_module.fsm.Started )
 								{
@@ -277,7 +287,12 @@ namespace space_with_friends {
 								protovessel_meta.protovessel.vesselRef.GoOnRails();
 							}
 							else {
-								protovessel_meta.protovessel.vesselRef.Load();
+								if ( !( protovessel_meta.protovessel.vesselRef.Landed || protovessel_meta.protovessel.vesselRef.Splashed ) ) {
+									protovessel_meta.protovessel.vesselRef.GoOnRails();
+								}
+
+								// protovessel_meta.protovessel.vesselRef.Load();
+
 								existing_vessel = protovessel_meta.protovessel.vesselRef;
 
 								foreach ( var crewmember in existing_vessel.GetVesselCrew() )
@@ -294,11 +309,36 @@ namespace space_with_friends {
 							return;
 						}
 
+						// existing_vessel.position = vessel_position.position;
 						existing_vessel.latitude = vessel_position.latitude;
 						existing_vessel.longitude = vessel_position.longitude;
 						existing_vessel.altitude = vessel_position.altitude;
+						existing_vessel.srfRelRotation = vessel_position.rotation;
+						existing_vessel.heightFromTerrain = vessel_position.height;
+						existing_vessel.terrainNormal = vessel_position.normal;
 						existing_vessel.CoM = vessel_position.CoM;
 
+						utils.Log( $"  existing_vessel.situation: { existing_vessel.situation }" );
+						utils.Log( $"  latitude: { existing_vessel.latitude }" );
+						utils.Log( $"  longitude: { existing_vessel.longitude }" );
+						utils.Log( $"  altitude: { existing_vessel.altitude }" );
+						utils.Log( $"  srfRelRotation: { existing_vessel.srfRelRotation }" );
+						utils.Log( $"  heightFromTerrain: { existing_vessel.heightFromTerrain }" );
+						utils.Log( $"  terrainNormal: { existing_vessel.terrainNormal }" );
+						utils.Log( $"  CoM: { existing_vessel.CoM }" );
+
+						utils.Log( "  orbit:" );
+						utils.Log( $"    inclination: { orbit.inclination }" );
+						utils.Log( $"    eccentricity: { orbit.eccentricity }" );
+						utils.Log( $"    semiMajorAxis: { orbit.semiMajorAxis }" );
+						utils.Log( $"    LAN: { orbit.LAN }" );
+						utils.Log( $"    argumentOfPeriapsis: { orbit.argumentOfPeriapsis }" );
+						utils.Log( $"    meanAnomalyAtEpoch: { orbit.meanAnomalyAtEpoch }" );
+						utils.Log( $"    epoch: { orbit.epoch }" );
+						utils.Log( $"    referenceBody: { orbit.referenceBody }" );
+
+						existing_vessel.orbit.SetOrbit( orbit.inclination, orbit.eccentricity, orbit.semiMajorAxis, orbit.LAN, orbit.argumentOfPeriapsis, orbit.meanAnomalyAtEpoch, orbit.epoch, orbit.referenceBody );
+						existing_vessel.orbitDriver.orbit.UpdateFromOrbitAtUT( existing_vessel.orbitDriver.orbit, Planetarium.GetUniversalTime(), orbit.referenceBody );
 						existing_vessel.orbitDriver.updateFromParameters();
 
 						// if it's an asteroid, make sure we don't have too many
@@ -330,6 +370,8 @@ namespace space_with_friends {
 								}
 							}
 						}
+
+						utils.Log( "vessel position updated" );
 					} );
 				}
 					break;
@@ -474,9 +516,9 @@ namespace space_with_friends {
 			// TODO: set a timeout of a few ms, then get the active vessel and send it (or match something from the ship_construct to verify)
 			// TODO: move vessel serialization here
 
-			// ProtoVessel protovessel = vessel?.BackupVessel();
+			ProtoVessel protovessel = vessel?.BackupVessel();
+			//ProtoVessel protovessel = vessel?.protoVessel;
 
-			ProtoVessel protovessel = vessel?.protoVessel;
 			if ( protovessel == null ) {
 				utils.Log( "  no protovessel" );
 				return;
@@ -515,6 +557,8 @@ namespace space_with_friends {
 			fsData data;
 			ConfigNode orbit_node = new ConfigNode( "root" );
 			orbit_snapshot.Save( orbit_node );
+
+			utils.Log( orbit_snapshot.ToString() );
 
 			VesselPosition vessel_position = new VesselPosition();
 			vessel_position.time = now;
