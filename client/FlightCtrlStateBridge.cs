@@ -16,7 +16,6 @@ namespace space_with_friends {
 		static bool initialized = false;
 
 		private Vessel active_vessel;
-		private Kerbal active_kerbal;
 		private FlightCtrlState last_sent_state = new FlightCtrlState();
 
 		private static Queue<Action> run_in_main = new Queue<Action>();
@@ -37,7 +36,7 @@ namespace space_with_friends {
 			Core.client.on_message += on_message;
 
 			GameEvents.onVesselChange.Add( this.on_vessel_change );
-			GameEvents.OnIVACameraKerbalChange.Add( this.on_kerbal_change );
+
 			initialized = true;
 		}
 
@@ -53,20 +52,14 @@ namespace space_with_friends {
 			}
 		}
 
-		void on_kerbal_change( Kerbal new_active_kerbal ) {
-			active_kerbal = new_active_kerbal;
-			utils.Log( $"switched kerbals ( have active kerbal?: { active_kerbal != null } )" );
-		}
-
 		public void on_fly_by_wire( FlightCtrlState state ) {
+			Kerbal active_kerbal = CameraManager.Instance.IVACameraActiveKerbal;
 			if ( active_kerbal == null ) {
-				utils.Log( "no active kerbal" );
 				return;
 			}
 
 			// only people sitting in pilot seats should send
 			if ( ( active_kerbal.protoCrewMember?.seat?.seatTransformName?.IndexOf( "pilot", StringComparison.OrdinalIgnoreCase ) ?? -1 ) < 0 ) {
-				utils.Log( "no pilot seat" );
 				return;
 			}
 
@@ -112,7 +105,6 @@ namespace space_with_friends {
 				x_equal &&
 				y_equal &&
 				z_equal ) {
-				utils.Log( "state is same" );
 				return;
 			}
 
@@ -120,7 +112,16 @@ namespace space_with_friends {
 
 			ConfigNode flight_ctrl_state_node = new ConfigNode( "root" );
 			state.Save( flight_ctrl_state_node );
-			utils.Log( flight_ctrl_state_node.ToString() );
+
+			Core.client?.send( new msg {
+				world_id = space_with_friends.Core.world_id,
+				source = space_with_friends.Core.player_id,
+				world_time = Planetarium.GetUniversalTime(),
+				vessel_id = FlightGlobals.ActiveVessel?.id ?? Guid.Empty,
+				type = "flight_ctrl_state",
+				message = flight_ctrl_state_node.toString()
+			} );
+
 		}
 
 		void Update() {
@@ -159,7 +160,14 @@ namespace space_with_friends {
 				return;
 			}
 
-			// TODO: apply flight control state in main thread
+			ConfigNode flight_ctrl_state_node = ConfigNode.Parse( msg.message );
+			FlightCtrlState state = new FlightCtrlState();
+			state.Load( flight_ctrl_state_node );
+
+
+			run_in_main.Enqueue( () => {
+				FlightInputHandler.state.CopyFrom( state );
+			} );
 		}
 
 		public void OnDestroy() {
@@ -167,14 +175,12 @@ namespace space_with_friends {
 
 			Core.client.on_message -= on_message;
 			GameEvents.onVesselChange.Remove( this.on_vessel_change );
-			GameEvents.OnIVACameraKerbalChange.Remove( this.on_kerbal_change );
 
 			if ( FlightGlobals.ActiveVessel != null ) {
 				FlightGlobals.ActiveVessel.OnFlyByWire -= this.on_fly_by_wire;
 			}
 
 			active_vessel = null;
-			active_kerbal = null;
 
 			initialized = false;
 		}
